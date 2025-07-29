@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block title %}Companies - AI Company Assistant{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto">
+    <div class="bg-white rounded-lg shadow-lg p-6">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-bold text-gray-800">🏢 Company Directory</h2>
+            <div class="text-sm text-gray-600">
+                Total Companies: <span class="font-semibold">{{ companies|length }}</span>
+            </div>
+        </div>
+
+        <!-- Search and Filter -->
+        <div x-data="{ searchTerm: '', selectedSector: '' }" class="mb-6">
+            <div class="flex space-x-4 mb-4">
+                <input 
+                    x-model="searchTerm"
+                    type="text" 
+                    placeholder="Search companies..."
+                    class="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                <select 
+                    x-model="selectedSector"
+                    class="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                    <option value="">All Sectors</option>
+                    {% for sector in sectors %}
+                    <option value="{{ sector }}">{{ sector }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Companies Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {% for company in companies %}
+                <div 
+                    x-show="(searchTerm === '' || '{{ company.name|lower }}'.includes(searchTerm.toLowerCase()) || '{{ company.description|lower }}'.includes(searchTerm.toLowerCase())) && (selectedSector === '' || selectedSector === '{{ company.sector }}')"
+                    class="bg-gray-50 rounded-lg p-4 border hover:shadow-md transition-shadow"
+                >
+                    <div class="flex justify-between items-start mb-2">
+                        <h3 class="text-lg font-semibold text-gray-800">{{ company.name }}</h3>
+                        <span class="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
+                            {{ company.sector }}
+                        </span>
+                    </div>
+                    
+                    <p class="text-gray-600 text-sm mb-3">{{ company.description|truncatechars:100 }}</p>
+                    
+                    {% if company.financials %}
+                    <div class="text-xs text-gray-500">
+                        <strong>Financials:</strong>
+                        {% for key, value in company.financials.items %}
+                            {{ key|title }}: {{ value }}{% if not forloop.last %}, {% endif %}
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    
+                    <div class="mt-3">
+                        <button 
+                            onclick="askAboutCompany('{{ company.name }}')"
+                            class="bg-blue-500 hover:bg-blue-600 text-white text-xs px-3 py-1 rounded"
+                        >
+                            Ask AI About This Company
+                        </button>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="col-span-full text-center py-8">
+                    <p class="text-gray-500">No companies found. Try uploading some data!</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function askAboutCompany(companyName) {
+    // Store the company name in localStorage and redirect to chat
+    localStorage.setItem('pendingQuestion', `Tell me about the company ${companyName}`);
+    window.location.href = '/';
+}
+</script>
+{% endblock %}

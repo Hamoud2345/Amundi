@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+
+{% block title %}Chat - AI Company Assistant{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <div class="bg-white rounded-lg shadow-lg p-6">
+        <h2 class="text-2xl font-bold text-gray-800 mb-6">💬 Chat with AI Assistant</h2>
+        
+        <div x-data="chatApp()" x-init="loadChatHistory()" class="space-y-4">
+            <!-- Chat Messages -->
+            <div class="bg-gray-50 rounded-lg p-4 h-96 overflow-y-auto" id="chat-messages">
+                <template x-for="message in messages" :key="message.id">
+                    <div class="mb-4">
+                        <!-- User Message -->
+                        <div class="flex justify-end mb-2">
+                            <div class="bg-blue-500 text-white rounded-lg px-4 py-2 max-w-xs">
+                                <p x-text="message.user"></p>
+                            </div>
+                        </div>
+                        <!-- Bot Response -->
+                        <div class="flex justify-start">
+                            <div class="bg-white border rounded-lg px-4 py-2 max-w-xs">
+                                <p x-text="message.bot" class="whitespace-pre-line"></p>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+                
+                <!-- Loading indicator -->
+                <div x-show="loading" class="flex justify-start">
+                    <div class="bg-gray-200 rounded-lg px-4 py-2">
+                        <p class="text-gray-600">🤖 Thinking...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chat Input -->
+            <div class="flex space-x-2">
+                <input 
+                    x-model="currentMessage" 
+                    @keyup.enter="sendMessage()"
+                    type="text" 
+                    placeholder="Ask me about any company..."
+                    class="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    :disabled="loading"
+                >
+                <button 
+                    @click="sendMessage()"
+                    :disabled="loading || !currentMessage.trim()"
+                    class="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-400 text-white px-6 py-2 rounded-lg font-medium"
+                >
+                    Send
+                </button>
+            </div>
+
+            <!-- Session Info -->
+            <div class="text-sm text-gray-500 flex justify-between">
+                <p>Session ID: <span x-text="sessionId" class="font-mono"></span></p>
+                <button @click="clearChat()" class="text-red-500 hover:text-red-700 text-xs">Clear Chat</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function chatApp() {
+    return {
+        messages: [],
+        currentMessage: '',
+        loading: false,
+        sessionId: localStorage.getItem('sessionId') || '',
+
+        async loadChatHistory() {
+            // Check for pending question from other pages
+            const pendingQuestion = localStorage.getItem('pendingQuestion');
+            if (pendingQuestion) {
+                this.currentMessage = pendingQuestion;
+                localStorage.removeItem('pendingQuestion');
+                // Auto-send the pending question
+                setTimeout(() => this.sendMessage(), 500);
+            }
+
+            // Load existing chat history for this session
+            if (this.sessionId) {
+                try {
+                    const response = await fetch(`/chat-history/?session_id=${this.sessionId}`);
+                    const data = await response.json();
+                    
+                    this.messages = data.chats.reverse().map((chat, index) => ({
+                        id: index,
+                        user: chat.user_message,
+                        bot: chat.bot_response
+                    }));
+
+                    // Scroll to bottom after loading
+                    setTimeout(() => this.scrollToBottom(), 100);
+                } catch (error) {
+                    console.error('Error loading chat history:', error);
+                }
+            }
+        },
+
+        async sendMessage() {
+            if (!this.currentMessage.trim()) return;
+            
+            const userMessage = this.currentMessage;
+            this.currentMessage = '';
+            this.loading = true;
+
+            try {
+                const response = await fetch('/chat/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': this.getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({
+                        message: userMessage,
+                        session_id: this.sessionId
+                    })
+                });
+
+                const data = await response.json();
+                
+                this.messages.push({
+                    id: Date.now(),
+                    user: userMessage,
+                    bot: data.answer
+                });
+
+                this.sessionId = data.session_id;
+                localStorage.setItem('sessionId', this.sessionId);
+
+                this.scrollToBottom();
+
+            } catch (error) {
+                console.error('Error:', error);
+                this.messages.push({
+                    id: Date.now(),
+                    user: userMessage,
+                    bot: 'Sorry, there was an error processing your request.'
+                });
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        scrollToBottom() {
+            setTimeout(() => {
+                const chatContainer = document.getElementById('chat-messages');
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            }, 100);
+        },
+
+        clearChat() {
+            this.messages = [];
+            this.sessionId = '';
+            localStorage.removeItem('sessionId');
+        },
+
+        getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+    }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block title %}Chat History - AI Company Assistant{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto">
+    <div class="bg-white rounded-lg shadow-lg p-6">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-bold text-gray-800">💬 Chat History</h2>
+            <div class="text-sm text-gray-600">
+                Total Conversations: <span class="font-semibold">{{ chats|length }}</span>
+            </div>
+        </div>
+
+        <div x-data="{ searchTerm: '', selectedSession: '' }" class="space-y-6">
+            <!-- Filters -->
+            <div class="flex space-x-4">
+                <input 
+                    x-model="searchTerm"
+                    type="text" 
+                    placeholder="Search conversations..."
+                    class="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                <select 
+                    x-model="selectedSession"
+                    class="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                    <option value="">All Sessions</option>
+                    {% for chat in chats %}
+                        {% if chat.session_id %}
+                            <option value="{{ chat.session_id }}">{{ chat.session_id|truncatechars:20 }}</option>
+                        {% endif %}
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Chat History -->
+            <div class="space-y-4">
+                {% for chat in chats %}
+                <div 
+                    x-show="(searchTerm === '' || '{{ chat.user_message|lower }}'.includes(searchTerm.toLowerCase()) || '{{ chat.bot_response|lower }}'.includes(searchTerm.toLowerCase())) && (selectedSession === '' || selectedSession === '{{ chat.session_id }}')"
+                    class="bg-gray-50 rounded-lg p-4 border"
+                >
+                    <div class="flex justify-between items-start mb-3">
+                        <div class="text-xs text-gray-500">
+                            <span class="font-medium">{{ chat.timestamp|date:"M d, Y H:i" }}</span>
+                            {% if chat.session_id %}
+                                <span class="ml-2 bg-gray-200 px-2 py-1 rounded text-xs">
+                                    Session: {{ chat.session_id|truncatechars:8 }}
+                                </span>
+                            {% endif %}
+                        </div>
+                        <button 
+                            onclick="continueConversation('{{ chat.session_id }}', '{{ chat.user_message|escapejs }}')"
+                            class="bg-blue-500 hover:bg-blue-600 text-white text-xs px-3 py-1 rounded"
+                        >
+                            Continue Chat
+                        </button>
+                    </div>
+                    
+                    <!-- User Message -->
+                    <div class="mb-3">
+                        <div class="flex items-start space-x-2">
+                            <div class="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full font-medium">
+                                User
+                            </div>
+                            <div class="flex-1">
+                                <p class="text-sm text-gray-800">{{ chat.user_message }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Bot Response -->
+                    <div>
+                        <div class="flex items-start space-x-2">
+                            <div class="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full font-medium">
+                                Bot
+                            </div>
+                            <div class="flex-1">
+                                <p class="text-sm text-gray-700 whitespace-pre-line">{{ chat.bot_response }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="text-center py-8">
+                    <div class="text-4xl mb-4">💭</div>
+                    <p class="text-gray-500">No chat history found. Start a conversation!</p>
+                    <a href="/" class="inline-block mt-4 bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg">
+                        Start Chatting
+                    </a>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Load More (if needed) -->
+            {% if chats|length >= 50 %}
+            <div class="text-center">
+                <button class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg">
+                    Load More History
+                </button>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+function continueConversation(sessionId, lastMessage) {
+    // Store session ID and redirect to chat
+    localStorage.setItem('sessionId', sessionId);
+    localStorage.setItem('pendingQuestion', `Continue from: "${lastMessage}"`);
+    window.location.href = '/';
+}
+</script>
+{% endblock %}
