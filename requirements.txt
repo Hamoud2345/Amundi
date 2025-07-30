@@ -1,0 +1,7 @@
+Django>=5.2
+djangorestframework
+langgraph
+langchain-openai
+langchain-community
+openai
+tqdm
