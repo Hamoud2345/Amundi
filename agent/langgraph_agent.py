@@ -5,7 +5,8 @@ from langchain.schema import SystemMessage
 from typing import TypedDict
 from .llm_factory import make_llm
 from .tools import get_company_tool
-from langchain_core.pydantic_v1 import BaseModel, Field
+from pydantic import BaseModel, Field
+from langchain.output_parsers import PydanticOutputParser
 import re
 
 llm = make_llm()
@@ -34,7 +35,12 @@ router_prompt = PromptTemplate(
     input_variables=["input"],
 )
 
-router_chain = router_prompt | llm.with_structured_output(Router)
+# Try to use structured_output helper; fallback to parser if not supported
+try:
+    router_chain = router_prompt | llm.with_structured_output(Router)
+except NotImplementedError:
+    parser = PydanticOutputParser(pydantic_object=Router)
+    router_chain = router_prompt | llm | parser
 
 # ── Nodes ────────────────────────────────────────────────────────────────
 def route_message(state: ChatState) -> dict:
