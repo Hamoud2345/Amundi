@@ -1,9 +1,5 @@
-Django>=5.2
+django>=5.2
 djangorestframework
-langgraph==0.0.69
-langchain-openai==0.1.7
-langchain-community==0.2.4
-langchain-core==0.2.5
-langchain==0.2.3
-openai==1.30.5
+langchain>=0.2.10
+openai>=0.30.5
 tqdm
