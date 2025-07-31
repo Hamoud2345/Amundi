@@ -34,7 +34,14 @@ SECRET_KEY = 'django-insecure-rgz$-ef+evayfqx*%fe%97c=37ibum%qq7oub5sq_si*rb%=po
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['*']  # Allow all hosts for development - change for production
+# Allow all hosts for development environments (local, Codespaces, Gitpod, etc.)
+# Change for production deployment
+ALLOWED_HOSTS = [
+    'localhost',
+    '127.0.0.1',
+    '0.0.0.0',
+    '*',  # Allows any host - needed for online IDEs like Codespaces, Gitpod
+]
 
 
 # Application definition
