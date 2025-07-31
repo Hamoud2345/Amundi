@@ -49,6 +49,7 @@ A Django-based AI chatbot that uses LangGraph for intelligent routing and OpenAI
 
 - Python 3.8+
 - OpenAI API key (optional - uses fake LLM for testing if not provided)
+- All dependencies are listed in `requirements.txt` including `python-dotenv` for secure environment variable management
 
 ### Setup
 
@@ -69,13 +70,18 @@ A Django-based AI chatbot that uses LangGraph for intelligent routing and OpenAI
    pip install -r requirements.txt
    ```
 
-4. **Set environment variables**
+4. **Set up environment variables**
    ```bash
-   export OPENAI_API_KEY="your-openai-api-key-here"
+   # Copy the example environment file
+   cp .env.example .env
+   
+   # Edit .env and add your OpenAI API key
+   # Replace 'your-openai-api-key-here' with your actual API key
    ```
-   Or create a `.env` file in the project root:
+   
+   Your `.env` file should look like:
    ```
-   OPENAI_API_KEY=your-openai-api-key-here
+   OPENAI_API_KEY=sk-proj-your-actual-api-key-here
    ```
 
 5. **Run migrations**
@@ -162,9 +168,13 @@ The company lookup tool uses multiple strategies:
 
 ### Environment Variables
 
+Environment variables are loaded from a `.env` file in the project root using `python-dotenv`:
+
 - `OPENAI_API_KEY`: Your OpenAI API key (optional - uses fake LLM if not set)
 - `DEBUG`: Django debug mode (default: True)
 - `SECRET_KEY`: Django secret key (auto-generated)
+
+**Security Note**: The `.env` file is ignored by Git to protect your API keys. Use `.env.example` as a template.
 
 ### Django Settings
 
@@ -189,9 +199,11 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ### Common Issues
 
-1. **403 Forbidden on API calls**: CSRF protection is disabled for API endpoints
-2. **Company not found**: Try different variations of the company name (fuzzy matching should help)
-3. **OpenAI API errors**: Check your API key and ensure you have credits
+1. **Missing .env file**: Copy `.env.example` to `.env` and add your OpenAI API key
+2. **OpenAI API errors**: Check your API key in `.env` file and ensure you have credits
+3. **403 Forbidden on API calls**: CSRF protection is disabled for API endpoints
+4. **Company not found**: Try different variations of the company name (fuzzy matching should help)
+5. **Environment variables not loading**: Ensure `python-dotenv` is installed (`pip install python-dotenv`)
 
 ### Debug Mode
 
