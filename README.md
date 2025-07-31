@@ -96,7 +96,11 @@ A Django-based AI chatbot that uses LangGraph for intelligent routing and OpenAI
 
 7. **Start the development server**
    ```bash
+   # For local development
    python manage.py runserver
+   
+   # For online IDEs (Codespaces, Gitpod, etc.) - bind to all interfaces
+   python manage.py runserver 0.0.0.0:8000
    ```
 
 8. **Access the application**
@@ -204,6 +208,8 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 3. **403 Forbidden on API calls**: CSRF protection is disabled for API endpoints
 4. **Company not found**: Try different variations of the company name (fuzzy matching should help)
 5. **Environment variables not loading**: Ensure `python-dotenv` is installed (`pip install python-dotenv`)
+6. **Online IDE access issues**: Use `python manage.py runserver 0.0.0.0:8000` and access via the provided URL
+7. **Port forwarding**: In Codespaces/Gitpod, ensure port 8000 is forwarded and set to public
 
 ### Debug Mode
 

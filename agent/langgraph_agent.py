@@ -28,8 +28,18 @@ class Router(BaseModel):
 router_prompt = PromptTemplate(
     template="""
     You are an expert at routing a user's request to the appropriate data source.
-    Based on the user's query, route them to 'company_query' or 'general_query'.
-
+    
+    Route to 'company_query' ONLY if the user is asking about a SPECIFIC company by name.
+    Examples of company_query:
+    - "Tell me about Acme Corp"
+    - "What does TechFlow Solutions do?"
+    - "Show me information on Microsoft"
+    
+    Route to 'general_query' for:
+    - General questions about companies ("what companies are in the database", "list all companies")
+    - Non-company questions ("hello", "how are you", "what can you do")
+    - Requests for help or information about the system
+    
     User query: {input}
     """,
     input_variables=["input"],
@@ -51,40 +61,87 @@ def route_message(state: ChatState) -> dict:
     return {"route": route.datasource}
 
 def chat_node(state: ChatState) -> ChatState:
-    """LLM node for general chat."""
-    PROMPT = ChatPromptTemplate.from_messages([
-        SystemMessage(content="You are a helpful assistant."),
-        ("human", "{input}")
-    ])
-    chain = PROMPT | llm
-    response = chain.invoke({"input": state["input"]})
-    return {"output": response.content}
-
-def company_tool_node(state: ChatState) -> ChatState:
-    """Tool node that gets company information and generates AI response."""
+    """Intelligent chat node that uses LLM to answer questions based on stored company data.
+    
+    This node provides ALL company data to the LLM and lets it intelligently 
+    respond to any question using only the stored information.
+    """
     user_input = state["input"]
     
-    # Simplified extraction: the router already decided it's a company query
-    company_name = re.sub(r'\b(what is|about|tell me about|information on|the company)\b', '', user_input, flags=re.IGNORECASE).strip()
-    print(f"DEBUG: Extracted company name: '{company_name}'")
+    # Get all company data from database
+    from companies.models import Company
+    companies = Company.objects.all()
     
+    if not companies.exists():
+        return {
+            "output": "No companies are currently in the database."
+        }
+    
+    # Format all company data for the LLM
+    company_data = "\n\n".join([
+        f"Company: {c.name}\n"
+        f"Description: {c.description}\n"
+        f"Sector: {c.sector}\n"
+        f"Financials: {c.financials}"
+        for c in companies
+    ])
+    
+    # Create intelligent prompt for LLM
+    prompt = ChatPromptTemplate.from_messages([
+        SystemMessage(content=f"""
+        You are an AI assistant that answers questions about companies using ONLY the provided company database.
+        
+        COMPANY DATABASE:
+        {company_data}
+        
+        INSTRUCTIONS:
+        - Answer the user's question using ONLY the information from the company database above
+        - Be helpful and conversational
+        - If asked about companies not in the database, say they're not in our records
+        - For general questions about "what companies" or "list companies", provide a nice summary
+        - For questions about specific companies, provide detailed information
+        - For questions asking for "more details" or "tell me more", provide comprehensive information
+        - Do not use any external knowledge - only use the database provided above
+        """),
+        ("human", "{input}")
+    ])
+    
+    # Use LLM to generate intelligent response
+    chain = prompt | llm
+    response = chain.invoke({"input": user_input})
+    
+    return {
+        "output": response.content
+    }
+
+def company_tool_node(state: ChatState) -> ChatState:
+    """Return a deterministic answer based solely on the company record."""
+    user_input = state["input"]
+
+    # The router decided this *is* a company query⇢ just strip common filler
+    company_name = re.sub(
+        r"\b(what is|about|tell me about|information on|the company)\b",
+        "",
+        user_input,
+        flags=re.IGNORECASE,
+    ).strip()
+    print(f"DEBUG: Extracted company name: '{company_name}'")
+
     try:
         tool_result = get_company_tool.invoke({"name": company_name})
         print(f"DEBUG: Tool result: '{tool_result}'")
-        
-        enhanced_prompt = f"""You are CompanyBot. A user asked: "{state['input']}"
-
-Here is the company information from our database:
-{tool_result}
-
-Please provide a helpful response based on this information. If the company was not found, let the user know."""
-        
-        response = llm.invoke(enhanced_prompt)
-        return {"output": response.content}
-        
-    except Exception as e:
-        print(f"DEBUG: Tool error: {e}")
+    except Exception as exc:
+        print(f"DEBUG: Tool error: {exc}")
         return {"output": f"Error looking up '{company_name}'."}
+
+    if tool_result == "Company not found.":
+        return {"output": f"Sorry, I couldn't find any information for '{company_name}'."}
+
+    # Otherwise we have a formatted company profile string
+    response_text = (
+        f"Here’s what we know about {company_name}:\n{tool_result}"
+    )
+    return {"output": response_text}
 
 # ── Graph ────────────────────────────────────────────────────────────────
 def decide_route(state: ChatState):
