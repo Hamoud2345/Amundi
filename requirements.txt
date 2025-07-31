@@ -11,3 +11,4 @@ langgraph-prebuilt==0.6.1
 langgraph-sdk==0.2.0
 openai==1.97.1
 tqdm
+python-dotenv
